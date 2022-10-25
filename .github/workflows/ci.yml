@@ -8,6 +8,9 @@ on:
     branches:
       - "main"
 
+env:
+  WORKBENCH_DIR: /home/runner/work/project
+
 jobs:
   unit-test:
     strategy:
@@ -21,9 +24,18 @@ jobs:
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 90
 
+    defaults:
+      run:
+        working-directory: ${{ env.WORKBENCH_DIR }}
+
     steps:
       - name: Check out APISIX plugins
         uses: actions/checkout@v3
+
+      # workaround: solve long unix socket path causing nginx start failure.
+      - name: Copy Working Directory
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: cp -R $GITHUB_WORKSPACE $WORKBENCH_DIR
 
       - name: Check out APISIX repo
         run: |
@@ -37,7 +49,7 @@ jobs:
       - name: Launch APISIX common services
         run: |
           sudo make ci-env-up project_compose_ci=ci/pod/docker-compose.common.yml
-        working-directory: workbench
+        working-directory: ${{ env.WORKBENCH_DIR }}/workbench
 
       - name: Linux Get dependencies
         run: |
@@ -46,14 +58,14 @@ jobs:
       - name: Linux Before install
         run: |
           sudo ./ci/${{ matrix.job_name }}_runner.sh before_install
-        working-directory: workbench
+        working-directory: ${{ env.WORKBENCH_DIR }}/workbench
 
       - name: Linux Do install
         run: |
           sudo ./ci/${{ matrix.job_name }}_runner.sh do_install
-        working-directory: workbench
+        working-directory: ${{ env.WORKBENCH_DIR }}/workbench
 
       - name: Run test case
         run: |
           sudo ./ci/utils/linux-common-runnner.sh run_case
-        working-directory: workbench
+        working-directory: ${{ env.WORKBENCH_DIR }}/workbench
